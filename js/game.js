@@ -16,6 +16,9 @@ class GomokuGame {
     this.aiPlayer = 2; // AI执白
     this.isAIThinking = false;
     this.soundEnabled = true;
+    this.isReplayMode = false;
+    this.replayBoard = [];
+    this.replayIndex = 0;
     
     this.init();
   }
@@ -65,6 +68,10 @@ class GomokuGame {
     
     // 音效开关
     document.getElementById('soundToggle').addEventListener('click', () => this.toggleSound());
+    
+    // 棋谱按钮
+    document.getElementById('recordBtn').addEventListener('click', () => this.toggleRecordPanel());
+    document.getElementById('closeRecordBtn').addEventListener('click', () => this.closeRecordPanel());
     
     // 弹窗关闭
     document.getElementById('modalClose').addEventListener('click', () => this.closeModal());
@@ -233,6 +240,10 @@ class GomokuGame {
     this.gameOver = true;
     const winner = this.currentPlayer === 1 ? 'black' : 'white';
     
+    // 保存棋谱
+    const mode = this.isAIMode ? 'ai' : 'pvp';
+    recordManager.saveRecord(this.moveHistory, mode, winner, this.aiPlayer);
+    
     // 更新分数
     this.scores[winner]++;
     this.saveScores();
@@ -244,7 +255,7 @@ class GomokuGame {
     // 显示胜利弹窗
     const winnerText = this.currentPlayer === 1 ? '黑方' : '白方';
     const winnerName = this.isAIMode && this.currentPlayer === this.aiPlayer ? 'AI' : winnerText;
-    this.showModal(`🎉 ${winnerName}获胜！`, `恭喜${winnerName}赢得比赛！`);
+    this.showModal(`🎉 ${winnerName}获胜！`, `恭喜${winnerName}赢得比赛！棋谱已自动保存。`);
   }
 
   /**
@@ -252,8 +263,13 @@ class GomokuGame {
    */
   handleDraw() {
     this.gameOver = true;
+    
+    // 保存棋谱
+    const mode = this.isAIMode ? 'ai' : 'pvp';
+    recordManager.saveRecord(this.moveHistory, mode, 'draw', this.aiPlayer);
+    
     SoundManager.play('draw');
-    this.showModal('🤝 平局', '棋盘已满，双方平局！');
+    this.showModal('🤝 平局', '棋盘已满，双方平局！棋谱已自动保存。');
   }
 
   /**
@@ -392,6 +408,316 @@ class GomokuGame {
     if (saved) {
       this.scores = JSON.parse(saved);
     }
+  }
+
+  // ========== 棋谱功能 ==========
+
+  /**
+   * 打开棋谱面板
+   */
+  toggleRecordPanel() {
+    const panel = document.getElementById('recordPanel');
+    panel.classList.add('show');
+    this.renderRecordList();
+  }
+
+  /**
+   * 关闭棋谱面板
+   */
+  closeRecordPanel() {
+    document.getElementById('recordPanel').classList.remove('show');
+  }
+
+  /**
+   * 渲染棋谱列表
+   */
+  renderRecordList() {
+    const listEl = document.getElementById('recordList');
+    const records = recordManager.getRecords();
+    
+    if (records.length === 0) {
+      listEl.innerHTML = '<div class="no-records">暂无棋谱记录</div>';
+      return;
+    }
+    
+    listEl.innerHTML = records.map(record => `
+      <div class="record-item" data-id="${record.id}">
+        <div class="record-info">
+          <div class="record-date">${record.date}</div>
+          <div class="record-detail">
+            <span class="record-mode">${record.mode === 'ai' ? '🤖 人机' : '👥 双人'}</span>
+            <span class="record-result ${record.winner}">${record.winner === 'black' ? '⚫黑胜' : record.winner === 'white' ? '⚪白胜' : '🤝平局'}</span>
+            <span class="record-moves">${record.moveCount}步</span>
+          </div>
+        </div>
+        <div class="record-actions">
+          <button class="record-btn replay-btn" title="回放">▶️</button>
+          <button class="record-btn export-btn" title="导出">📤</button>
+          <button class="record-btn delete-btn" title="删除">🗑️</button>
+        </div>
+      </div>
+    `).join('');
+    
+    // 绑定事件
+    listEl.querySelectorAll('.replay-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = parseInt(e.target.closest('.record-item').dataset.id);
+        this.startReplay(id);
+      });
+    });
+    
+    listEl.querySelectorAll('.export-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = parseInt(e.target.closest('.record-item').dataset.id);
+        this.exportRecord(id);
+      });
+    });
+    
+    listEl.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = parseInt(e.target.closest('.record-item').dataset.id);
+        this.deleteRecord(id);
+      });
+    });
+  }
+
+  /**
+   * 开始回放棋谱
+   */
+  startReplay(recordId) {
+    const record = recordManager.getRecord(recordId);
+    if (!record) return;
+    
+    this.closeRecordPanel();
+    this.isReplayMode = true;
+    this.replayRecord = record;
+    this.replayIndex = 0;
+    
+    // 清空棋盘
+    this.createBoard();
+    this.renderBoard();
+    
+    // 显示回放控制
+    this.showReplayControls();
+    this.updateReplayProgress();
+  }
+
+  /**
+   * 显示回放控制
+   */
+  showReplayControls() {
+    let controlsEl = document.getElementById('replayControls');
+    if (!controlsEl) {
+      controlsEl = document.createElement('div');
+      controlsEl.id = 'replayControls';
+      controlsEl.className = 'replay-controls';
+      controlsEl.innerHTML = `
+        <button id="replayFirst" class="replay-btn" title="第一步">⏮️</button>
+        <button id="replayPrev" class="replay-btn" title="上一步">⏪</button>
+        <span id="replayProgress" class="replay-progress">0/0</span>
+        <button id="replayNext" class="replay-btn" title="下一步">⏩</button>
+        <button id="replayLast" class="replay-btn" title="最后一步">⏭️</button>
+        <button id="replayAuto" class="replay-btn" title="自动播放">▶️</button>
+        <button id="exitReplay" class="replay-btn exit" title="退出回放">❌</button>
+      `;
+      document.querySelector('.game-container').appendChild(controlsEl);
+      
+      // 绑定事件
+      document.getElementById('replayFirst').addEventListener('click', () => this.replayFirst());
+      document.getElementById('replayPrev').addEventListener('click', () => this.replayPrev());
+      document.getElementById('replayNext').addEventListener('click', () => this.replayNext());
+      document.getElementById('replayLast').addEventListener('click', () => this.replayLast());
+      document.getElementById('replayAuto').addEventListener('click', () => this.toggleAutoReplay());
+      document.getElementById('exitReplay').addEventListener('click', () => this.exitReplay());
+    }
+    controlsEl.style.display = 'flex';
+  }
+
+  /**
+   * 隐藏回放控制
+   */
+  hideReplayControls() {
+    const controlsEl = document.getElementById('replayControls');
+    if (controlsEl) {
+      controlsEl.style.display = 'none';
+    }
+  }
+
+  /**
+   * 更新回放进度显示
+   */
+  updateReplayProgress() {
+    const progressEl = document.getElementById('replayProgress');
+    if (progressEl && this.replayRecord) {
+      progressEl.textContent = `${this.replayIndex}/${this.replayRecord.moves.length}`;
+    }
+  }
+
+  /**
+   * 回放第一步
+   */
+  replayFirst() {
+    this.replayIndex = 0;
+    this.createBoard();
+    this.renderBoard();
+    this.updateReplayProgress();
+  }
+
+  /**
+   * 回放上一步
+   */
+  replayPrev() {
+    if (this.replayIndex <= 0) return;
+    
+    this.replayIndex--;
+    const move = this.replayRecord.moves[this.replayIndex];
+    this.board[move.row][move.col] = 0;
+    
+    // 更新最后一步标记
+    if (this.replayIndex > 0) {
+      const prevMove = this.replayRecord.moves[this.replayIndex - 1];
+      this.lastMove = { row: prevMove.row, col: prevMove.col };
+    } else {
+      this.lastMove = null;
+    }
+    
+    this.renderBoard();
+    this.updateReplayProgress();
+    SoundManager.play('place');
+  }
+
+  /**
+   * 回放下一步
+   */
+  replayNext() {
+    if (!this.replayRecord || this.replayIndex >= this.replayRecord.moves.length) return;
+    
+    const move = this.replayRecord.moves[this.replayIndex];
+    this.board[move.row][move.col] = move.player;
+    this.lastMove = { row: move.row, col: move.col };
+    this.replayIndex++;
+    
+    this.renderBoard();
+    this.updateReplayProgress();
+    SoundManager.play('place');
+  }
+
+  /**
+   * 回放最后一步
+   */
+  replayLast() {
+    while (this.replayIndex < this.replayRecord.moves.length) {
+      const move = this.replayRecord.moves[this.replayIndex];
+      this.board[move.row][move.col] = move.player;
+      this.lastMove = { row: move.row, col: move.col };
+      this.replayIndex++;
+    }
+    this.renderBoard();
+    this.updateReplayProgress();
+    SoundManager.play('place');
+  }
+
+  /**
+   * 自动回放
+   */
+  toggleAutoReplay() {
+    const btn = document.getElementById('replayAuto');
+    
+    if (this.autoReplayTimer) {
+      clearInterval(this.autoReplayTimer);
+      this.autoReplayTimer = null;
+      btn.textContent = '▶️';
+    } else {
+      btn.textContent = '⏸️';
+      this.autoReplayTimer = setInterval(() => {
+        if (this.replayIndex >= this.replayRecord.moves.length) {
+          clearInterval(this.autoReplayTimer);
+          this.autoReplayTimer = null;
+          btn.textContent = '▶️';
+          return;
+        }
+        this.replayNext();
+      }, 800);
+    }
+  }
+
+  /**
+   * 退出回放
+   */
+  exitReplay() {
+    if (this.autoReplayTimer) {
+      clearInterval(this.autoReplayTimer);
+      this.autoReplayTimer = null;
+    }
+    
+    this.isReplayMode = false;
+    this.replayRecord = null;
+    this.replayIndex = 0;
+    this.hideReplayControls();
+    this.restart();
+  }
+
+  /**
+   * 导出棋谱
+   */
+  exportRecord(recordId) {
+    const jsonStr = recordManager.exportRecord(recordId);
+    if (!jsonStr) return;
+    
+    const record = recordManager.getRecord(recordId);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `gomoku_${record.date.replace(/[/:]/g, '-')}.json`;
+    a.click();
+    
+    URL.revokeObjectURL(url);
+    this.showNotification('棋谱已导出');
+  }
+
+  /**
+   * 导入棋谱
+   */
+  importRecord(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const record = recordManager.importRecord(e.target.result);
+      if (record) {
+        this.renderRecordList();
+        this.showNotification('棋谱导入成功');
+      } else {
+        this.showNotification('棋谱格式无效', 'error');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  /**
+   * 删除棋谱
+   */
+  deleteRecord(recordId) {
+    if (confirm('确定要删除这个棋谱吗？')) {
+      recordManager.deleteRecord(recordId);
+      this.renderRecordList();
+      this.showNotification('棋谱已删除');
+    }
+  }
+
+  /**
+   * 显示通知
+   */
+  showNotification(message, type = 'success') {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      notification.classList.add('fade-out');
+      setTimeout(() => notification.remove(), 300);
+    }, 2000);
   }
 }
 

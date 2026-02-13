@@ -42,7 +42,25 @@
     <div class="controls">
       <button id="undoBtn" class="btn btn-secondary">↩️ 悔棋</button>
       <button id="restartBtn" class="btn btn-primary">🔄 重新开始</button>
+      <button id="recordBtn" class="btn btn-secondary">📜 棋谱</button>
     </div>
+  </div>
+  
+  <!-- 棋谱面板 -->
+  <div id="recordPanel" class="record-panel">
+    <div class="record-header">
+      <h3>📜 棋谱记录</h3>
+      <div class="record-actions-top">
+        <label class="btn btn-secondary import-btn">
+          📥 导入
+          <input type="file" id="importFile" accept=".json" style="display: none;">
+        </label>
+        <button id="exportAllBtn" class="btn btn-secondary">📤 全部导出</button>
+        <button id="clearAllBtn" class="btn btn-danger">🗑️ 清空</button>
+        <button id="closeRecordBtn" class="btn btn-icon">❌</button>
+      </div>
+    </div>
+    <div id="recordList" class="record-list"></div>
   </div>
   
   <!-- 胜利弹窗 -->
@@ -57,6 +75,39 @@
   <!-- JavaScript 文件 -->
   <script src="js/sound.js"></script>
   <script src="js/ai.js"></script>
+  <script src="js/record.js"></script>
   <script src="js/game.js"></script>
+  
+  <script>
+    // 导入棋谱事件
+    document.getElementById('importFile').addEventListener('change', (e) => {
+      if (e.target.files[0]) {
+        window.game.importRecord(e.target.files[0]);
+        e.target.value = '';
+      }
+    });
+    
+    // 全部导出
+    document.getElementById('exportAllBtn').addEventListener('click', () => {
+      const jsonStr = recordManager.exportAllRecords();
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'gomoku_all_records.json';
+      a.click();
+      URL.revokeObjectURL(url);
+      window.game.showNotification('棋谱已全部导出');
+    });
+    
+    // 清空所有棋谱
+    document.getElementById('clearAllBtn').addEventListener('click', () => {
+      if (confirm('确定要清空所有棋谱吗？此操作不可恢复！')) {
+        recordManager.clearAllRecords();
+        window.game.renderRecordList();
+        window.game.showNotification('棋谱已清空');
+      }
+    });
+  </script>
 </body>
 </html>

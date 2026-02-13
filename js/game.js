@@ -239,12 +239,14 @@ class GomokuGame {
     const existing = document.getElementById('thinkingIndicator');
     if (existing) existing.remove();
     
-    // 添加到棋盘容器外，避免被renderBoard清除
-    const boardContainer = document.querySelector('.board-container');
-    const indicator = document.createElement('div');
-    indicator.className = 'thinking-indicator';
-    indicator.id = 'thinkingIndicator';
-    boardContainer.appendChild(indicator);
+    // 添加到AI玩家信息面板中，避免遮挡棋盘
+    const aiPlayerInfo = document.querySelector('.player-info[data-player="white"]');
+    if (aiPlayerInfo) {
+      const indicator = document.createElement('div');
+      indicator.className = 'thinking-indicator-mini';
+      indicator.id = 'thinkingIndicator';
+      aiPlayerInfo.appendChild(indicator);
+    }
   }
 
   /**

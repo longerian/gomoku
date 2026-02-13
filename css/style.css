@@ -239,7 +239,24 @@ h1 {
   z-index: 3;
 }
 
-/* AI思考指示器 */
+/* AI思考指示器 - 迷你版（显示在玩家信息面板中） */
+.thinking-indicator-mini {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(102, 126, 234, 0.3);
+  border-top-color: #667eea;
+  border-radius: 50%;
+  animation: spinMini 1s linear infinite;
+  vertical-align: middle;
+  margin-left: 8px;
+}
+
+@keyframes spinMini {
+  to { transform: rotate(360deg); }
+}
+
+/* 保留原有的AI思考指示器样式（备用） */
 .thinking-indicator {
   position: absolute;
   top: 50%;

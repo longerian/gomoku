@@ -235,15 +235,16 @@ class GomokuGame {
    * 显示AI思考指示器
    */
   showThinkingIndicator() {
-    const boardEl = document.getElementById('board');
     // 先移除已存在的指示器，防止重复
     const existing = document.getElementById('thinkingIndicator');
     if (existing) existing.remove();
     
+    // 添加到棋盘容器外，避免被renderBoard清除
+    const boardContainer = document.querySelector('.board-container');
     const indicator = document.createElement('div');
     indicator.className = 'thinking-indicator';
     indicator.id = 'thinkingIndicator';
-    boardEl.appendChild(indicator);
+    boardContainer.appendChild(indicator);
   }
 
   /**

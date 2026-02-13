@@ -36,10 +36,14 @@ h1 {
   display: flex;
   gap: 20px;
   align-items: center;
+  justify-content: center;
   background: rgba(255, 255, 255, 0.95);
   padding: 15px 25px;
   border-radius: 12px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  min-width: 280px;
+  max-width: 400px;
+  width: fit-content;
 }
 
 .player-info {

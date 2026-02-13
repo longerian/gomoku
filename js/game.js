@@ -107,7 +107,7 @@ class GomokuGame {
       this.moveHistory.push({ row, col, player: this.currentPlayer });
       this.lastMove = { row, col };
       SoundManager.play('place');
-      this.renderBoard();
+      this.renderBoard(true);
       this.currentPlayer = this.currentPlayer === 1 ? 2 : 1;
       this.updateDisplay();
     };
@@ -178,34 +178,34 @@ class GomokuGame {
     this.board[row][col] = this.currentPlayer;
     this.moveHistory.push({ row, col, player: this.currentPlayer });
     this.lastMove = { row, col };
-    
+
     // 播放音效
     SoundManager.play('place');
-    
-    // 渲染棋盘
-    this.renderBoard();
-    
+
+    // 渲染棋盘，只对新落子添加动画
+    this.renderBoard(true);
+
     // 联机模式发送落子
     if (this.isOnlineMode) {
       onlineManager.makeMove(row, col);
     }
-    
+
     // 检查胜负
     if (this.checkWin(row, col)) {
       this.handleWin();
       return;
     }
-    
+
     // 检查平局
     if (this.moveHistory.length === this.boardSize * this.boardSize) {
       this.handleDraw();
       return;
     }
-    
+
     // 切换玩家
     this.currentPlayer = this.currentPlayer === 1 ? 2 : 1;
     this.updateDisplay();
-    
+
     // AI回合
     if (this.isAIMode && this.currentPlayer === this.aiPlayer) {
       this.aiMove();
@@ -236,6 +236,10 @@ class GomokuGame {
    */
   showThinkingIndicator() {
     const boardEl = document.getElementById('board');
+    // 先移除已存在的指示器，防止重复
+    const existing = document.getElementById('thinkingIndicator');
+    if (existing) existing.remove();
+    
     const indicator = document.createElement('div');
     indicator.className = 'thinking-indicator';
     indicator.id = 'thinkingIndicator';
@@ -349,15 +353,15 @@ class GomokuGame {
    */
   undo() {
     if (this.moveHistory.length === 0 || this.gameOver || this.isAIThinking) return;
-    
+
     // AI模式下需要撤销两步
     const stepsToUndo = this.isAIMode && this.moveHistory.length > 1 ? 2 : 1;
-    
+
     for (let i = 0; i < stepsToUndo && this.moveHistory.length > 0; i++) {
       const lastMove = this.moveHistory.pop();
       this.board[lastMove.row][lastMove.col] = 0;
     }
-    
+
     // 更新最后一步标记
     if (this.moveHistory.length > 0) {
       const prev = this.moveHistory[this.moveHistory.length - 1];
@@ -367,9 +371,9 @@ class GomokuGame {
       this.lastMove = null;
       this.currentPlayer = 1;
     }
-    
+
     SoundManager.play('undo');
-    this.renderBoard();
+    this.renderBoard(false);
     this.updateDisplay();
   }
 
@@ -378,7 +382,7 @@ class GomokuGame {
    */
   restart() {
     this.createBoard();
-    this.renderBoard();
+    this.renderBoard(false);
     this.updateDisplay();
     SoundManager.play('restart');
   }
@@ -386,37 +390,41 @@ class GomokuGame {
   /**
    * 渲染棋盘
    */
-  renderBoard() {
+  renderBoard(animateLast = false) {
     const boardEl = document.getElementById('board');
     boardEl.innerHTML = '';
-    
+
     // 星位坐标
     const starPoints = [[3, 3], [3, 7], [3, 11], [7, 3], [7, 7], [7, 11], [11, 3], [11, 7], [11, 11]];
-    
+
     for (let row = 0; row < this.boardSize; row++) {
       for (let col = 0; col < this.boardSize; col++) {
         const cell = document.createElement('div');
         cell.className = 'cell';
         cell.dataset.row = row;
         cell.dataset.col = col;
-        
+
         // 添加星位
         if (starPoints.some(p => p[0] === row && p[1] === col)) {
           cell.classList.add('star-point');
         }
-        
+
         // 添加棋子
         if (this.board[row][col] !== 0) {
           const stone = document.createElement('div');
           stone.className = `stone ${this.board[row][col] === 1 ? 'black' : 'white'}`;
+          // 只对新落子添加动画类
+          if (animateLast && this.lastMove && this.lastMove.row === row && this.lastMove.col === col) {
+            stone.classList.add('animate');
+          }
           cell.appendChild(stone);
-          
+
           // 标记最后一步
           if (this.lastMove && this.lastMove.row === row && this.lastMove.col === col) {
             cell.classList.add('last-move');
           }
         }
-        
+
         boardEl.appendChild(cell);
       }
     }
@@ -559,16 +567,16 @@ class GomokuGame {
   startReplay(recordId) {
     const record = recordManager.getRecord(recordId);
     if (!record) return;
-    
+
     this.closeRecordPanel();
     this.isReplayMode = true;
     this.replayRecord = record;
     this.replayIndex = 0;
-    
+
     // 清空棋盘
     this.createBoard();
-    this.renderBoard();
-    
+    this.renderBoard(false);
+
     // 显示回放控制
     this.showReplayControls();
     this.updateReplayProgress();
@@ -631,7 +639,7 @@ class GomokuGame {
   replayFirst() {
     this.replayIndex = 0;
     this.createBoard();
-    this.renderBoard();
+    this.renderBoard(false);
     this.updateReplayProgress();
   }
 
@@ -640,11 +648,11 @@ class GomokuGame {
    */
   replayPrev() {
     if (this.replayIndex <= 0) return;
-    
+
     this.replayIndex--;
     const move = this.replayRecord.moves[this.replayIndex];
     this.board[move.row][move.col] = 0;
-    
+
     // 更新最后一步标记
     if (this.replayIndex > 0) {
       const prevMove = this.replayRecord.moves[this.replayIndex - 1];
@@ -652,8 +660,8 @@ class GomokuGame {
     } else {
       this.lastMove = null;
     }
-    
-    this.renderBoard();
+
+    this.renderBoard(false);
     this.updateReplayProgress();
     SoundManager.play('place');
   }
@@ -663,13 +671,13 @@ class GomokuGame {
    */
   replayNext() {
     if (!this.replayRecord || this.replayIndex >= this.replayRecord.moves.length) return;
-    
+
     const move = this.replayRecord.moves[this.replayIndex];
     this.board[move.row][move.col] = move.player;
     this.lastMove = { row: move.row, col: move.col };
     this.replayIndex++;
-    
-    this.renderBoard();
+
+    this.renderBoard(true);
     this.updateReplayProgress();
     SoundManager.play('place');
   }
@@ -684,7 +692,7 @@ class GomokuGame {
       this.lastMove = { row: move.row, col: move.col };
       this.replayIndex++;
     }
-    this.renderBoard();
+    this.renderBoard(false);
     this.updateReplayProgress();
     SoundManager.play('place');
   }

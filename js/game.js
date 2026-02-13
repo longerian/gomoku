@@ -19,6 +19,8 @@ class GomokuGame {
     this.isReplayMode = false;
     this.replayBoard = [];
     this.replayIndex = 0;
+    this.isOnlineMode = false;
+    this.myColor = null; // 联机模式下我的颜色
     
     this.init();
   }
@@ -31,6 +33,7 @@ class GomokuGame {
     this.bindEvents();
     this.loadScores();
     this.updateDisplay();
+    this.setupOnlineCallbacks();
   }
 
   /**
@@ -69,6 +72,12 @@ class GomokuGame {
     // 音效开关
     document.getElementById('soundToggle').addEventListener('click', () => this.toggleSound());
     
+    // 主题按钮
+    document.getElementById('themeBtn').addEventListener('click', () => themeManager.createThemePanel());
+    
+    // 统计按钮
+    document.getElementById('statsBtn').addEventListener('click', () => statsManager.createStatsPanel());
+    
     // 棋谱按钮
     document.getElementById('recordBtn').addEventListener('click', () => this.toggleRecordPanel());
     document.getElementById('closeRecordBtn').addEventListener('click', () => this.closeRecordPanel());
@@ -83,6 +92,37 @@ class GomokuGame {
   }
 
   /**
+   * 设置联机回调
+   */
+  setupOnlineCallbacks() {
+    onlineManager.onGameStart = (data) => {
+      this.myColor = data.myColor;
+      this.isOnlineMode = true;
+      this.restart();
+      this.showNotification(`联机对战开始！你执${data.myColor === 1 ? '黑' : '白'}棋`);
+    };
+
+    onlineManager.onOpponentMove = (row, col) => {
+      this.board[row][col] = this.currentPlayer;
+      this.moveHistory.push({ row, col, player: this.currentPlayer });
+      this.lastMove = { row, col };
+      SoundManager.play('place');
+      this.renderBoard();
+      this.currentPlayer = this.currentPlayer === 1 ? 2 : 1;
+      this.updateDisplay();
+    };
+
+    onlineManager.onOpponentDisconnect = () => {
+      this.showNotification('对手已断开连接', 'error');
+      this.gameOver = true;
+    };
+
+    onlineManager.onWaiting = (roomId) => {
+      this.showNotification(`房间已创建: ${roomId}，等待对手...`);
+    };
+  }
+
+  /**
    * 设置游戏模式
    */
   setGameMode(mode) {
@@ -91,10 +131,18 @@ class GomokuGame {
     });
     
     this.isAIMode = mode === 'ai';
+    this.isOnlineMode = mode === 'online';
+    
     if (this.isAIMode) {
       this.ai = new GomokuAI(this.aiPlayer);
     } else {
       this.ai = null;
+    }
+    
+    if (this.isOnlineMode) {
+      onlineManager.createOnlinePanel();
+    } else {
+      onlineManager.disconnect();
     }
     
     this.restart();
@@ -117,6 +165,9 @@ class GomokuGame {
     // AI模式下，只允许玩家执黑
     if (this.isAIMode && this.currentPlayer === this.aiPlayer) return;
     
+    // 联机模式下，检查是否轮到自己
+    if (this.isOnlineMode && this.myColor !== this.currentPlayer) return;
+    
     this.makeMove(row, col);
   }
 
@@ -133,6 +184,11 @@ class GomokuGame {
     
     // 渲染棋盘
     this.renderBoard();
+    
+    // 联机模式发送落子
+    if (this.isOnlineMode) {
+      onlineManager.makeMove(row, col);
+    }
     
     // 检查胜负
     if (this.checkWin(row, col)) {
@@ -241,8 +297,16 @@ class GomokuGame {
     const winner = this.currentPlayer === 1 ? 'black' : 'white';
     
     // 保存棋谱
-    const mode = this.isAIMode ? 'ai' : 'pvp';
+    const mode = this.isOnlineMode ? 'online' : (this.isAIMode ? 'ai' : 'pvp');
     recordManager.saveRecord(this.moveHistory, mode, winner, this.aiPlayer);
+    
+    // 记录统计
+    statsManager.recordGame({
+      mode: this.isOnlineMode ? 'online' : (this.isAIMode ? 'ai' : 'pvp'),
+      winner,
+      moves: this.moveHistory.length,
+      playerColor: this.isAIMode ? 1 : null
+    });
     
     // 更新分数
     this.scores[winner]++;
@@ -265,8 +329,16 @@ class GomokuGame {
     this.gameOver = true;
     
     // 保存棋谱
-    const mode = this.isAIMode ? 'ai' : 'pvp';
+    const mode = this.isOnlineMode ? 'online' : (this.isAIMode ? 'ai' : 'pvp');
     recordManager.saveRecord(this.moveHistory, mode, 'draw', this.aiPlayer);
+    
+    // 记录统计
+    statsManager.recordGame({
+      mode: this.isOnlineMode ? 'online' : (this.isAIMode ? 'ai' : 'pvp'),
+      winner: 'draw',
+      moves: this.moveHistory.length,
+      playerColor: null
+    });
     
     SoundManager.play('draw');
     this.showModal('🤝 平局', '棋盘已满，双方平局！棋谱已自动保存。');

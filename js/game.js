@@ -52,6 +52,13 @@ class GomokuGame {
     this.moveHistory = [];
     this.lastMove = null;
     this.isAIThinking = false;
+
+    // 调试：检查是否有localStorage残留
+    const savedBoard = localStorage.getItem('gomoku_board');
+    if (savedBoard) {
+      console.warn('发现残留的棋盘数据:', savedBoard);
+      localStorage.removeItem('gomoku_board');
+    }
   }
 
   /**
@@ -400,6 +407,10 @@ class GomokuGame {
     // 星位坐标
     const starPoints = [[3, 3], [3, 7], [3, 11], [7, 3], [7, 7], [7, 11], [11, 3], [11, 7], [11, 11]];
 
+    // 调试：统计棋子数量
+    let stoneCount = 0;
+    let stonePositions = [];
+
     for (let row = 0; row < this.boardSize; row++) {
       for (let col = 0; col < this.boardSize; col++) {
         const cell = document.createElement('div');
@@ -426,10 +437,20 @@ class GomokuGame {
           if (this.lastMove && this.lastMove.row === row && this.lastMove.col === col) {
             cell.classList.add('last-move');
           }
+
+          // 调试：记录棋子
+          stoneCount++;
+          stonePositions.push({ row, col, color: this.board[row][col] === 1 ? 'black' : 'white' });
         }
 
         boardEl.appendChild(cell);
       }
+    }
+
+    // 调试：输出棋子信息
+    if (stoneCount > 0) {
+      console.log('渲染棋子数量:', stoneCount);
+      console.log('棋子位置:', stonePositions);
     }
   }
 

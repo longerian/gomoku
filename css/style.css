@@ -349,34 +349,342 @@ h1 {
   margin-bottom: 25px;
 }
 
-/* 响应式设计 */
-@media (max-width: 600px) {
+/* ========== 响应式设计 ========== */
+
+/* 平板设备 */
+@media (max-width: 768px) {
   h1 {
-    font-size: 1.8rem;
+    font-size: 2rem;
   }
   
   .board {
-    grid-template-columns: repeat(15, 25px);
-    grid-template-rows: repeat(15, 25px);
+    grid-template-columns: repeat(15, 30px);
+    grid-template-rows: repeat(15, 30px);
   }
   
   .cell {
-    width: 25px;
-    height: 25px;
+    width: 30px;
+    height: 30px;
   }
   
   .stone {
+    width: 26px;
+    height: 26px;
+  }
+  
+  .board-container {
+    padding: 15px;
+  }
+}
+
+/* 手机设备 */
+@media (max-width: 600px) {
+  body {
+    padding: 10px;
+    padding-top: env(safe-area-inset-top, 10px);
+    padding-bottom: env(safe-area-inset-bottom, 10px);
+  }
+  
+  h1 {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+  }
+  
+  .game-container {
+    gap: 10px;
+    width: 100%;
+    max-width: 100vw;
+  }
+  
+  .mode-selector {
+    width: 100%;
+    justify-content: center;
+    gap: 8px;
+  }
+  
+  .mode-btn {
+    padding: 8px 14px;
+    font-size: 0.85rem;
+  }
+  
+  .info-panel {
+    width: calc(100% - 20px);
+    justify-content: space-around;
+    padding: 10px 15px;
+  }
+  
+  .player-info {
+    padding: 6px 10px;
+  }
+  
+  .player-info .stone {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .player-info .score {
+    font-size: 1rem;
+  }
+  
+  .board-container {
+    padding: 10px;
+    max-width: calc(100vw - 20px);
+    overflow: hidden;
+  }
+  
+  .board {
+    grid-template-columns: repeat(15, 22px);
+    grid-template-rows: repeat(15, 22px);
+  }
+  
+  .cell {
     width: 22px;
     height: 22px;
   }
   
-  .info-panel {
-    flex-direction: column;
-    gap: 10px;
+  .stone {
+    width: 19px;
+    height: 19px;
+  }
+  
+  .last-move::after {
+    width: 8px;
+    height: 8px;
   }
   
   .controls {
-    flex-direction: column;
+    width: calc(100% - 20px);
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+  }
+  
+  .btn {
+    padding: 10px 16px;
+    font-size: 0.9rem;
+    min-width: 100px;
+  }
+  
+  .sound-toggle {
+    top: 10px;
+    right: 10px;
+    width: 44px;
+    height: 44px;
+    font-size: 1.3rem;
+  }
+  
+  .replay-controls {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px;
+  }
+  
+  .replay-controls .replay-btn {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .modal-content {
+    padding: 25px;
+    margin: 15px;
+    width: calc(100% - 30px);
+  }
+  
+  .modal-content h2 {
+    font-size: 1.5rem;
+  }
+  
+  .modal-content p {
+    font-size: 1rem;
+  }
+}
+
+/* 超小屏幕手机 */
+@media (max-width: 380px) {
+  h1 {
+    font-size: 1.3rem;
+  }
+  
+  .mode-btn {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+  }
+  
+  .board {
+    grid-template-columns: repeat(15, 19px);
+    grid-template-rows: repeat(15, 19px);
+  }
+  
+  .cell {
+    width: 19px;
+    height: 19px;
+  }
+  
+  .stone {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .btn {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    min-width: 85px;
+  }
+}
+
+/* 棋谱面板 - 手机适配 */
+@media (max-width: 600px) {
+  .record-panel {
+    width: 100%;
+    right: -100%;
+  }
+  
+  .record-header {
+    padding: 15px;
+  }
+  
+  .record-header h3 {
+    font-size: 1.1rem;
+  }
+  
+  .record-actions-top {
+    gap: 6px;
+  }
+  
+  .record-actions-top .btn {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+  }
+  
+  .record-item {
+    padding: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .record-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  
+  .record-date {
+    font-size: 0.8rem;
+  }
+  
+  .record-detail {
+    font-size: 0.85rem;
+  }
+}
+
+/* 横屏模式 */
+@media (max-height: 500px) and (orientation: landscape) {
+  body {
+    padding: 5px 20px;
+  }
+  
+  h1 {
+    font-size: 1.2rem;
+    margin-bottom: 5px;
+  }
+  
+  .game-container {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+  }
+  
+  .mode-selector {
+    width: 100%;
+    order: 1;
+    margin-bottom: 0;
+  }
+  
+  .info-panel {
+    order: 2;
+    padding: 8px 15px;
+  }
+  
+  .board-container {
+    order: 3;
+    padding: 8px;
+  }
+  
+  .controls {
+    order: 4;
+    flex-direction: row;
+  }
+  
+  .board {
+    grid-template-columns: repeat(15, 20px);
+    grid-template-rows: repeat(15, 20px);
+  }
+  
+  .cell {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .stone {
+    width: 17px;
+    height: 17px;
+  }
+}
+
+/* 触摸设备优化 */
+@media (hover: none) and (pointer: coarse) {
+  .cell {
+    cursor: default;
+  }
+  
+  .btn, .mode-btn, .record-btn, .replay-btn {
+    min-height: 44px; /* Apple 推荐的最小触摸区域 */
+  }
+  
+  .btn:hover, .mode-btn:hover, .record-btn:hover {
+    transform: none;
+  }
+  
+  .btn:active, .mode-btn:active {
+    transform: scale(0.95);
+    opacity: 0.9;
+  }
+}
+
+/* 深色模式支持 */
+@media (prefers-color-scheme: dark) {
+  .modal-content {
+    background: #2d2d2d;
+    color: #fff;
+  }
+  
+  .modal-content p {
+    color: #ccc;
+  }
+  
+  .record-panel {
+    background: #1a1a1a;
+    color: #fff;
+  }
+  
+  .record-item {
+    background: #2d2d2d;
+  }
+  
+  .record-item:hover {
+    background: #3d3d3d;
+  }
+  
+  .record-date {
+    color: #aaa;
+  }
+  
+  .record-moves {
+    color: #888;
+  }
+  
+  .no-records {
+    color: #666;
   }
 }
 
